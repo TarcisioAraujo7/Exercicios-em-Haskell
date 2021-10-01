@@ -1,0 +1,1 @@
+Projetos em Haskell para o componente curricular de programação funcional.
