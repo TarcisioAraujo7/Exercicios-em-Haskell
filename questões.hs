@@ -68,6 +68,3 @@ semOcorrencias :: Char -> [String] -> Bool
 semOcorrencias letra lista
     |  [ palavra | (palavra) <- lista, head palavra == letra] == [] = True 
     | otherwise = False
-
-questao3 :: Int -> Int -> Int
-questao3 x n = sum[div (x^n-1) (n-1)*n | n <- [0..n]] 
