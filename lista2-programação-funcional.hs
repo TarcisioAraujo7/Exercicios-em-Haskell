@@ -1,6 +1,3 @@
---Aluno: Tarcisio Almeida de Oliveira Araújo
---Número de Matrícula: 202100023128
-
 type CadastroSUS = [Cidadao]
 type CPF = Integer
 type Nome = String
