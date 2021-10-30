@@ -72,3 +72,114 @@ idadeAtual (dia, mes, ano) (diaHJ, mesAtual, anoAtual)
     | mes < mesAtual = anoAtual - ano
     where
         anoPassado = anoAtual - 1
+
+--Banco de Vacinados
+cadastroVac :: Vacinados
+cadastroVac = [
+    (22233344400,[("Pfizer", (12,07,2021))]),
+    (11223344556, [("Astrazeneca", (8,08,2021)),("Astrazeneca", (26,09,2021))]),
+    (88812121212,[("CoronaVac", (30,07,2021))]),
+    (99999888887, [("Astrazeneca", (2,08,2021)),("Astrazeneca", (20,09,2021))])
+    ]
+
+--D
+aplicaPrimDose :: CPF -> CadastroSUS -> FaixaIdade -> Municipio -> Vacina -> Data -> Vacinados -> Vacinados
+aplicaPrimDose cpfx ((cpf,nome,gen,datanasc,end,cidade,est,num,email):xs) faixax munx vacinax datax ((cpfv, vacinas ): vs)
+    | checaCPF cpfx ((cpf,nome,gen,datanasc,end,cidade,est,num,email):xs) == False = error "O cpf informado não esta cadastrado no sistema."
+    | checaVac cpfx ((cpfv, vacinas ): vs) == True = error "A primeira dose ja foi aplicada no usuário."
+    | checaResidencia cpfx ((cpf,nome,gen,datanasc,end,cidade,est,num,email):xs) munx == False = error "A vacinação só é permitida para residentes do município informado, atualize o cadastro do usuário."
+    | checaIdade (idadeAtual datanasc datax) faixax == False = error "O usuário nao esta na faixa de idade inserida."
+    | vacinax == "Jassen" = (cpfx,[(vacinax,datax),(vacinax,datax)]) : ((cpfv, vacinas ): vs)
+    | otherwise = (cpfx,[(vacinax,datax)]) : ((cpfv, vacinas ): vs)
+
+--Funções Auxiliares
+checaCPF :: CPF -> CadastroSUS -> Bool
+checaCPF _ [] = False
+checaCPF cpfx ((cpf,_,_,_,_,_,_,_,_):xs)
+    | cpfx == cpf = True
+    | otherwise = checaCPF cpfx xs
+
+checaVac :: CPF -> Vacinados -> Bool
+checaVac _ [] = False
+checaVac cpfx ((cpfv,vacinas): vs)
+    | cpfv == cpfx = True
+    | otherwise = checaVac cpfx vs
+
+--E
+quantidadeDoseMun :: Vacinados -> TipoDose -> Municipio -> CadastroSUS -> Quantidade
+quantidadeDoseMun [] _ _ _ = 0
+quantidadeDoseMun _ _ _ [] = error "Erro inesperado"
+quantidadeDoseMun ((cpf,vacinas):vs) tipodose munx cadastro
+    | tipodose >= 3 || tipodose <= 0 = error "Insira uma dose valida"
+    | checaResidencia cpf cadastro munx == False = 0 + quantidadeDoseMun vs tipodose munx cadastro
+    | tipodose == 1 && tomouPrimDose ((cpf,vacinas):vs) cpf =  1 + quantidadeDoseMun vs tipodose munx cadastro
+    | tipodose == 2 && tomouSegDose ((cpf,vacinas):vs) cpf = 1 + quantidadeDoseMun vs tipodose munx cadastro
+    | otherwise = quantidadeDoseMun vs tipodose munx cadastro
+
+--Funções Auxiliares
+tomouPrimDose :: Vacinados -> CPF -> Bool
+tomouPrimDose [] _ = False
+tomouPrimDose ((cpf,_):vs) cpfx
+    | cpf == cpfx = True
+    | otherwise = tomouPrimDose vs cpfx
+
+tomouSegDose :: Vacinados -> CPF -> Bool
+tomouSegDose [] _ = False
+tomouSegDose ((cpf,[(vacina1)]):vs) cpfx = tomouSegDose vs cpfx
+tomouSegDose ((cpf,[_,_]):vs) cpfx
+    | cpf == cpfx = True
+    | otherwise = tomouSegDose vs cpfx
+
+quantosSegDose :: Vacinados -> Quantidade
+quantosSegDose [] = 0
+quantosSegDose ((cpf,[(primDose)]):vs) = 0 + quantosSegDose vs
+quantosSegDose ((cpf,[(primDose),(segDose)]):vs) = 1 + quantosSegDose vs
+
+checaResidencia :: CPF -> CadastroSUS -> Municipio -> Bool
+checaResidencia _ [] _ = False
+checaResidencia cpfx ((cpf,_,_,_,_,mun,_,_,_):xs) munx
+    | cpf == cpfx && mun == munx = True
+    | otherwise = checaResidencia cpfx xs munx
+
+--F
+quantidadeEstIdDose :: Vacinados -> Estado -> FaixaIdade -> TipoDose -> Data -> CadastroSUS -> Quantidade
+quantidadeEstIdDose [] _ _ _ _ _ = 0
+quantidadeEstIdDose _ _ _ _ _ [] = 0
+quantidadeEstIdDose ((cpf,vacinas):vs) estx faixax tipodose datax cadastro
+    | tipodose >= 3 || tipodose <= 0 = error "Insira uma dose valida"
+    | checaEstado cpf cadastro estx == False = 0 + quantidadeEstIdDose vs estx faixax tipodose datax cadastro
+    | checaIdade (idadeAtual (coletaData cpf cadastro) datax) faixax == False = 0 + quantidadeEstIdDose vs estx faixax tipodose datax cadastro
+    | tipodose == 1 && tomouPrimDose ((cpf,vacinas):vs) cpf = 1 + quantidadeEstIdDose vs estx faixax tipodose datax cadastro
+    | tipodose == 2 && tomouSegDose ((cpf,vacinas):vs) cpf = 1 + quantidadeEstIdDose vs estx faixax tipodose datax cadastro
+    | otherwise = quantidadeEstIdDose vs estx faixax tipodose datax cadastro
+
+--Funções Auxiliares
+checaEstado :: CPF -> CadastroSUS -> Estado -> Bool
+checaEstado _ [] _ = False
+checaEstado cpfx ((cpf,_,_,_,_,_,est,_,_):xs) estx
+    | cpf == cpfx && est == estx = True
+    | otherwise = checaEstado cpfx xs estx
+
+coletaData :: CPF -> CadastroSUS -> DataNasc
+coletaData _ [] = (error "Não existe no cadastro")
+coletaData cpfx ((cpf,_,_,datax,_,_,_,_,_):xs)
+    | cpfx == cpf = datax
+    | otherwise = coletaData cpfx xs
+
+--G
+quantidadeEstVacDose :: Vacinados -> Estado -> Vacina -> TipoDose -> CadastroSUS -> Quantidade
+quantidadeEstVacDose [] _ _ _ _ = 0
+quantidadeEstVacDose _ _ _ _ [] = 0
+quantidadeEstVacDose ((cpf,vacinas):vs) estx vacinax tipodose cadastro
+    | tipodose >= 3 || tipodose <= 0 = error "Insira uma dose valida"
+    | checaEstado cpf cadastro estx == False = 0 + quantidadeEstVacDose vs estx vacinax tipodose cadastro
+    | checaVacina ((cpf,vacinas):vs) vacinax cpf == False = 0 + quantidadeEstVacDose vs estx vacinax tipodose cadastro
+    | tipodose == 1 && tomouPrimDose ((cpf,vacinas):vs) cpf = 1 + quantidadeEstVacDose vs estx vacinax tipodose cadastro
+    | tipodose == 2 && tomouSegDose ((cpf,vacinas):vs) cpf = 1 + quantidadeEstVacDose vs estx vacinax tipodose cadastro
+    | otherwise = quantidadeEstVacDose vs estx vacinax tipodose cadastro
+
+checaVacina :: Vacinados -> Vacina -> CPF -> Bool
+checaVacina [] _ _ = False
+checaVacina ((cpf,vacinados):vs) vacx cpfx
+    | cpf == cpfx && fst(head vacinados) == vacx = True
+    | otherwise = checaVacina vs vacx cpfx
