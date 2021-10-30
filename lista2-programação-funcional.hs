@@ -23,6 +23,10 @@ type Doses = [Dose]
 type Dose = (Vacina, Data)
 type Vacina = String
 type TipoDose = Int
+type Populacao = Int
+type PopMun = (Municipio, [(FaixaIdade, Populacao)])
+type PopEstado = (Estado, [PopMun])
+type PopPais = [PopEstado]
 
 --Banco de dados 
 cadastro :: CadastroSUS
@@ -183,3 +187,10 @@ checaVacina [] _ _ = False
 checaVacina ((cpf,vacinados):vs) vacx cpfx
     | cpf == cpfx && fst(head vacinados) == vacx = True
     | otherwise = checaVacina vs vacx cpfx
+
+--2)
+
+cadastroDemo :: PopPais
+cadastroDemo = [
+    ("SP",[("Sao Paulo",[((0,10), 1000), ((11,20), 3000), ((21,30), 3500), ((31,40), 2500), ((41,50), 2000), ((51,60), 1500), ((61,70), 1500), ((71,80), 1000), ((81,90), 1000), ((91,100), 1000), ((101,110), 1000), ((111,120), 1000), ((121, 130), 1000)])]) --11K total  
+               ]
