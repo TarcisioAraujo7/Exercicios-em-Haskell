@@ -190,7 +190,24 @@ checaVacina ((cpf,vacinados):vs) vacx cpfx
 
 --2)
 
-cadastroDemo :: PopPais
-cadastroDemo = [
-    ("SP",[("Sao Paulo",[((0,10), 1000), ((11,20), 3000), ((21,30), 3500), ((31,40), 2500), ((41,50), 2000), ((51,60), 1500), ((61,70), 1500), ((71,80), 1000), ((81,90), 1000), ((91,100), 1000), ((101,110), 1000), ((111,120), 1000), ((121, 130), 1000)])]) --11K total  
-               ]
+
+proximaFaixa :: CadastroSUS -> Int -> Municipio -> Quantidade -> Data -> FaixaIdade
+proximaFaixa ((cpf,nome,gen,datanasc,end,cidade,est,num,email):xs) idadex munx quantidadeVac datax = (idadex-1, pegaIdadeMin quantidadeVac ((cpf,nome,gen,datanasc,end,cidade,est,num,email):xs) idadex munx datax )
+
+
+somaIdades :: Quantidade -> CadastroSUS -> Int -> Municipio -> Data -> Int
+somaIdades _ [] _ _ _ = 0
+somaIdades 0 _ _ _ _ = 0
+somaIdades _ _ 0 _ _ = 0
+somaIdades quantVac ((cpf,nome,gen,datanasc,end,cidade,est,num,email):xs) idadeMax munx datax
+    | quantVac >= cidadaosPorMunicipio ((cpf,nome,gen,datanasc,end,cidade,est,num,email):xs) munx (idadeMax -1 ,idadeMax -1) datax = cidadaosPorMunicipio ((cpf,nome,gen,datanasc,end,cidade,est,num,email):xs) munx (idadeMax -1 ,idadeMax -1) datax + somaIdades (quantVac - cidadaosPorMunicipio ((cpf,nome,gen,datanasc,end,cidade,est,num,email):xs) munx (idadeMax -1 ,idadeMax -1) datax) ((cpf,nome,gen,datanasc,end,cidade,est,num,email):xs) (idadeMax - 1) munx datax
+    | otherwise = 0 + somaIdades quantVac xs idadeMax munx datax
+
+pegaIdadeMin ::  Quantidade -> CadastroSUS -> Int -> Municipio -> Data -> Int
+pegaIdadeMin _ [] _ _ _ = 0
+pegaIdadeMin 0 _ _ _ _ = 0
+pegaIdadeMin _ _ 0 _ _ = 0
+pegaIdadeMin quantVac ((cpf,nome,gen,datanasc,end,cidade,est,num,email):xs) idadeMax munx datax
+    | somaIdades quantVac ((cpf,nome,gen,datanasc,end,cidade,est,num,email):xs) idadeMax munx datax < quantVac = 0 + pegaIdadeMin (somaIdades quantVac ((cpf,nome,gen,datanasc,end,cidade,est,num,email):xs) idadeMax munx datax) ((cpf,nome,gen,datanasc,end,cidade,est,num,email):xs) idadeMax munx datax
+    | quantVac > cidadaosPorMunicipio ((cpf,nome,gen,datanasc,end,cidade,est,num,email):xs) munx (idadeMax -1 ,idadeMax -1) datax = pegaIdadeMin (quantVac - cidadaosPorMunicipio ((cpf,nome,gen,datanasc,end,cidade,est,num,email):xs) munx (idadeMax -1 ,idadeMax -1) datax) ((cpf,nome,gen,datanasc,end,cidade,est,num,email):xs) (idadeMax - 1) munx datax
+    | otherwise = idadeMax -1
