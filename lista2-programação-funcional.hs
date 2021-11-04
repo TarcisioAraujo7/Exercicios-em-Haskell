@@ -211,3 +211,69 @@ pegaIdadeMin quantVac ((cpf,nome,gen,datanasc,end,cidade,est,num,email):xs) idad
     | somaIdades quantVac ((cpf,nome,gen,datanasc,end,cidade,est,num,email):xs) idadeMax munx datax < quantVac = 0 + pegaIdadeMin (somaIdades quantVac ((cpf,nome,gen,datanasc,end,cidade,est,num,email):xs) idadeMax munx datax) ((cpf,nome,gen,datanasc,end,cidade,est,num,email):xs) idadeMax munx datax
     | quantVac > cidadaosPorMunicipio ((cpf,nome,gen,datanasc,end,cidade,est,num,email):xs) munx (idadeMax -1 ,idadeMax -1) datax = pegaIdadeMin (quantVac - cidadaosPorMunicipio ((cpf,nome,gen,datanasc,end,cidade,est,num,email):xs) munx (idadeMax -1 ,idadeMax -1) datax) ((cpf,nome,gen,datanasc,end,cidade,est,num,email):xs) (idadeMax - 1) munx datax
     | otherwise = idadeMax -1
+
+--Cadastro Demografico
+cadastroDemografico :: PopPais
+cadastroDemografico = [
+    ("SP",[("Sao Paulo",[((0,10), 100), ((11,20), 150), ((21,30), 250), ((31,40), 200), ((41,50), 250), ((51,60), 200), ((61,70), 150), ((71,80), 100), ((81, 90), 100), ((91,100), 100), ((101,110), 100), ((111,120), 50), ((121,130), 50)]),
+           ("Campinas",[((0,10), 50), ((11,20), 150), ((21,30), 150), ((31,40), 100), ((41,50), 130), ((51,60), 200), ((61,70), 50), ((71,80), 70), ((81, 90), 100), ((91,100), 50), ((101,110), 30), ((111,120), 50), ((121,130), 50)])]),
+    ("SE",[("Aracaju",[((0,10), 100), ((11,20), 175), ((21,30), 200), ((31,40), 150), ((41,50), 200), ((51,60), 175), ((61,70), 150), ((71,80), 100), ((81, 90), 50), ((91,100), 50), ((101,110), 50), ((111,120), 30), ((121,130), 15)]),
+           ("Muribeca",[((0,10), 25), ((11,20), 100), ((21,30), 130), ((31,40), 120), ((41,50), 100), ((51,60), 125), ((61,70), 20), ((71,80), 10), ((81, 90), 0), ((91,100), 10), ((101,110), 20), ((111,120), 30), ((121,130), 0)])])]
+
+--3)
+percentualVacinacao :: CadastroSUS -> Vacinados -> PopPais -> Estado -> TipoDose -> Data -> [(FaixaIdade,String)]
+percentualVacinacao (x:xs) (v:vs) (p:ps) estx dosex datax =  (zipando (faixas (separaPopEst2 (p:ps) estx)) (listaPorcentagem (listaVacinados (v:vs) estx (faixas (separaPopEst2 (p:ps) estx)) dosex datax (x:xs)) (quantiasFaixas (p:ps) estx (faixas (separaPopEst2 (p:ps) estx)))))
+
+--Funções Auxiliares
+
+faixas :: [(FaixaIdade, Populacao)] -> [FaixaIdade]
+faixas [] = []
+faixas (x : xs) = fst x : faixas xs
+
+porcentagem :: Float -> Float -> String
+porcentagem quantx quanty = formataPorcentagem (quantx * 100 / quanty)
+
+formataPorcentagem :: Float -> String
+formataPorcentagem x = (take 4 (show x)) ++ "%"
+
+faixaEspecifica :: [(FaixaIdade, Populacao)] -> FaixaIdade -> Quantidade
+faixaEspecifica [] _ = 0
+faixaEspecifica  ((faixa, quant) : fs ) faixax
+    | faixa == faixax = quant + faixaEspecifica fs faixax
+    | otherwise = faixaEspecifica fs faixax
+
+separaPopEst :: PopPais -> Estado ->  [(FaixaIdade, Populacao)]
+separaPopEst [] _ = error "O estado não consta no cadastro"
+separaPopEst ( (estado, []) : xs) _ = []
+separaPopEst ( (estado, ((mun,(faixas : fs)) : ms )) : xs ) estx
+    | ((mun,(faixas : fs)) : ms ) == [] = [] ++ separaPopEst ((estado, ms) : xs) estx
+    | null (estado, ((mun,(faixas : fs)) : ms )) = [] ++ separaPopEst  xs estx
+    | estado == estx =  (faixas : fs) ++ separaPopEst ( (estado,  ms ) : xs ) estx
+    | otherwise = separaPopEst xs estx
+
+quantiasFaixas :: PopPais -> Estado -> [FaixaIdade] -> [Quantidade]
+quantiasFaixas [] _ _ = []
+quantiasFaixas _ _ [] = []
+quantiasFaixas popPais estx (f:fs) = faixaEspecifica (separaPopEst popPais estx) f : quantiasFaixas popPais estx fs
+
+separaPopEst2 :: PopPais -> Estado -> [(FaixaIdade, Populacao)]
+separaPopEst2 [] _ = error "O estado não consta no cadastro"
+separaPopEst2 ( (estado, ((mun,(faixas : fs)) : ms )) : xs ) estx
+    | estado == estx =  faixas : fs
+    | otherwise = separaPopEst2 xs estx
+
+zipando :: [FaixaIdade] -> [String] -> [(FaixaIdade,String)]
+zipando [] _ = []
+zipando _ [] = []
+zipando (x : xs) (y : ys) = (x,y) : zipando xs ys
+
+listaVacinados :: Vacinados -> Estado -> [FaixaIdade] -> TipoDose -> Data -> CadastroSUS -> [Quantidade]
+listaVacinados _ _ [] _ _ _ = []
+listaVacinados (v:vs) estx (f:fs) tipodose datax (x:xs) = quantidadeEstIdDose (v:vs) estx f tipodose datax (x:xs) : listaVacinados (v:vs) estx fs tipodose datax (x:xs)
+
+listaPorcentagem :: [Quantidade] -> [Quantidade] -> [String]
+listaPorcentagem [] _ = []
+listaPorcentagem _ [] = []
+listaPorcentagem (x:xs) (y:ys) = porcentagem a b : listaPorcentagem xs ys
+    where a = fromIntegral x :: Float
+          b = fromIntegral y :: Float
