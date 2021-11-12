@@ -5,3 +5,4 @@ Recursos trabalhados:
 - Compreensão de listas   
 - Casamento de padrões
 - Polimorfismo de tipos   
+- Funções de alta ordem 
