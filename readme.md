@@ -3,4 +3,6 @@ Projetos e atividades em Haskell para o componente curricular de programação f
 Recursos trabalhados:   
 - Recursão   
 - Compreensão de listas   
-- Casamento de padrões   
+- Casamento de padrões
+- Polimorfismo de tipos   
+- Funções de alta ordem 
