@@ -10,7 +10,7 @@ para a lista [“boa”, “prova”] a função retornará “boa prova”.
 ordenaPalavras :: [String] -> String
 ordenaPalavras [] = []
 ordenaPalavras (x:xs)
-    | ordenaPalavras xs == [] = (x) ++ ordenaPalavras xs
+    | ordenaPalavras xs == [] = x ++ ordenaPalavras xs
     | otherwise = (x ++ " ") ++ ordenaPalavras xs
 
 {-
