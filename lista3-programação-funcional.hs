@@ -156,7 +156,7 @@ cadastroDemo = [
 --A)
 listaEstadoPerc :: PopPais -> Estado -> Vacinados -> CadastroSUS -> IO ()
 listaEstadoPerc ps estx vs cs = putStrLn
- (foldr (++) [] [ "ESTADO:", show estx, "\n",
+ (foldr (++) [] [ "\nESTADO:", show estx, "\n",
   "Cidades                      1° Dose       2° Dose\n",
   formataLinha (info ps estx vs cs)
  ])
@@ -259,3 +259,41 @@ somaTotal [[]] = 0
 somaTotal [] = 0
 somaTotal ([]:ls) = 0 + somaTotal ls
 somaTotal (((faixa, pop):xs):ls) = pop + somaTotal (xs:ls)
+
+--C)
+
+quantosFaltamPais ::  PopPais -> CadastroSUS -> Vacinados -> IO ()
+quantosFaltamPais ps cs vs =  putStrLn
+ (foldr (++) [] [ "\nPopulação não completamente imunizada por estado\n",
+  "Estados                              Porcentagem\n",
+  formataLinha1 (info2 ps cs vs)
+ ]) 
+
+porcentagemF ::  Float -> Float -> String
+porcentagemF _ 0 = ""
+porcentagemF quantx quanty = printf "%.2f"  (100.0 - (quantx * 100 / quanty)) ++ "%"
+
+info2 :: PopPais -> CadastroSUS -> Vacinados -> [(Estado,String)]
+info2 ps cs vs = zip (listaEstados ps) (map (porcentagemEstadoF ps cs vs 2) (listaEstados ps))
+
+porcentagemEstadoF :: PopPais -> CadastroSUS -> Vacinados -> TipoDose -> Estado  -> String
+porcentagemEstadoF ps cs vs dose estx = porcentagemF a b
+        where a = fromIntegral (quantidadeDoseEst vs dose estx cs) :: Float
+              b = fromIntegral (somaTotal (todosEst ps estx)) :: Float
+
+--
+listaEstadoFaltam :: PopPais -> Estado -> Vacinados -> CadastroSUS -> IO ()
+listaEstadoFaltam ps estx vs cs = putStrLn
+ (foldr (++) [] [ "\nPopulação que ainda não foi vacinada por municipio\nESTADO:", show estx, "\n",
+  "Cidades                      1° Dose       2° Dose\n",
+  formataLinha (info3 ps estx vs cs)
+ ])
+
+info3 :: PopPais -> Estado -> Vacinados -> CadastroSUS -> [(Municipio, (String , String ))]
+info3 ps estx vs cs = zip (cidades (todosMun1 ps estx)) (map (duasPorcentagensF vs cs ps estx) (cidades (todosMun1 ps estx)))
+
+duasPorcentagensF :: Vacinados -> CadastroSUS -> PopPais -> Estado -> Municipio -> (String, String)
+duasPorcentagensF vs cs ps estx mun = (porcentagemF (vacinados1Total) (cidadeTotal), porcentagemF (vacinados2Total) (cidadeTotal))
+        where vacinados1Total = fromIntegral (quantidadeDoseMun vs 1 mun cs) :: Float
+              vacinados2Total = fromIntegral (quantidadeDoseMun vs 2 mun cs) :: Float
+              cidadeTotal =     fromIntegral (totalMunEsp (todosMun1 ps estx) mun) :: Float
