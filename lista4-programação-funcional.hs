@@ -1,3 +1,5 @@
+import Text.Printf ( printf )
+
 type CadastroSUS = [Cidadao]
 type CPF = Integer
 type Nome = String
@@ -23,6 +25,9 @@ type Doses = [Dose]
 type Dose = (Vacina, Data)
 type Vacina = String
 type TipoDose = Int
+type Populacao = Int
+type PopMun = (Municipio, Populacao)
+
 
 -- Banco de dados 
 
@@ -42,20 +47,22 @@ cadastroVac = [
     (12345678900,[("Pfizer", (12,07,2021)),("Pfizer", (12,09,2021))]),
     (11223344556, [("Astrazeneca", (8,08,2021)),("Astrazeneca", (8,10,2021))]),
     (11111111111,[("CoronaVac", (12,07,2021))]),
-    (22222222222,[("Pfizer", (12,07,2021))]),
+    (22222222222,[("Pfizer", (12,07,2021)),("Pfizer", (12,07,2021))]),
     (88812121212,[("CoronaVac", (30,07,2021)), ("CoronaVac", (30,09,2021))]),
     (99999888887, [("Astrazeneca", (2,08,2021)),("Astrazeneca", (20,09,2021))]),
     (44444444444,[("Astrazeneca", (2,08,2021)),("Astrazeneca", (20,09,2021))]),
     (33333333333,[("Janssen", (2,08,2021)),("Janssen", (2,08,2021))])
     ]
 
+--1)
 passaporteVac :: Vacinados -> CadastroSUS -> IO()
 passaporteVac vs cs = do cpf <- getLine
                          if (read cpf :: CPF) == 0
                          then return ()
-                         else do putStrLn (formataDados (read cpf :: CPF) vs cs) 
+                         else do putStrLn (formataDados (read cpf :: CPF) vs cs)
                                  passaporteVac vs cs
 
+-- Funções auxiliares
 pegaNome :: CPF -> CadastroSUS -> Nome
 pegaNome cpfx cs
     |  map selecNome (filter checaCPF cs) /= [] = head (map selecNome (filter checaCPF cs))
@@ -69,14 +76,71 @@ pegaVac cpf vs
     | otherwise = (cpf,[])
     where checaCPF (cpfx, vacinas) = cpfx == cpf
 
-formataVac :: Vacinado -> String 
+formataVac :: Vacinado -> String
 formataVac (nome, [(tipo1,(dia,mes,ano))]) = concat[ tipo1, ", ", show dia, ".", show mes, ".", show ano, "\n"]
 formataVac (nome, [(tipo1,(dia1,mes1,ano1)),(tipo2,(dia2,mes2,ano2))])
     | tipo1 == "Janssen" = concat[show tipo1, ", ", show dia1, ".", show mes1, ".", show ano1]
     |otherwise = concat[ tipo1, ", ", show dia1, ".", show mes1, ".", show ano1, "\n", "       ",
                          tipo2, ", ", show dia2, ".", show mes2, ".", show ano2, "\n"]
-formataVac (nome, []) = "CPF NÃO VACINADO"
-                
+formataVac (nome, []) = "USUÁRIO NÃO VACINADO"
+
 
 formataDados :: CPF -> Vacinados -> CadastroSUS -> String
 formataDados cpf vs cs = concat ["\n", "INSIRA UM CPF\n",show cpf , "\nNOME: ", pegaNome cpf cs,"\nDOSES: ", formataVac (pegaVac cpf vs)]
+
+
+--2)
+-- Árvore Binária
+data Arv popMun = NoNulo
+                  | No PopMun (Arv PopMun) (Arv PopMun)
+                   deriving (Eq, Ord, Show, Read)
+
+cadastroArv :: Arv PopMun
+cadastroArv = No ("Itabaiana",100000)
+ (No ("Aracaju", 35000)         (No ("Capela", 675000) NoNulo NoNulo)   (No ("Estancia", 70000) NoNulo NoNulo))
+  (No ("Sao Cristovao",92100)  (No("Lagarto", 107000) NoNulo NoNulo)    (No ("Siriri", 10000) NoNulo NoNulo ))
+
+--A)
+munPercetual :: CadastroSUS -> Vacinados -> Municipio -> Arv PopMun -> String
+munPercetual cs vs munx arvM = porcentagem totalVacinados totalMun
+                          where totalVacinados = fromIntegral (vacinadosMun munx cs vs) :: Float
+                                totalMun = fromIntegral (snd (separaMun munx arvM)) :: Float
+
+-- Funções auxiliares
+separaMun :: Municipio -> Arv PopMun -> PopMun
+separaMun _ NoNulo = error "Cidade não consta"
+separaMun munx (No (mun, quant) no1 no2)
+    | munx == mun = (mun, quant)
+    | length munx < length mun = separaMun munx no1
+    | length munx > length mun = separaMun munx no2
+    | otherwise = error "Cidade não consta"
+
+vacinadosMun :: Municipio -> CadastroSUS -> Vacinados -> Quantidade
+vacinadosMun munx cs vs = length (filter checaSegDose (filter (checaCPFVac munx cs) vs))
+                          where checaSegDose (cpf,vacinas) = length vacinas >= 2
+
+checaCPFVac :: Municipio -> CadastroSUS -> Vacinado -> Bool
+checaCPFVac munx cs (cpfx,vacinas) = any checaMun cs
+                          where checaMun  (cpf,nome,gen,datanasc,end,mun,est,num,email) = mun == munx && cpf == cpfx
+
+porcentagem ::  Float -> Float -> String
+porcentagem _ 0 = ""
+porcentagem quantx quanty = printf "%.2f"  (quantx * 100 / quanty) ++ "%"
+
+--B)
+percentualAtrasoMun :: CadastroSUS -> Vacinados -> Municipio -> Arv PopMun -> Data -> String
+percentualAtrasoMun cs vs munx arvM datax = porcentagem totalVacinados totalMun
+                          where totalVacinados = fromIntegral (doseAtrasoMun munx cs vs datax) :: Float
+                                totalMun = fromIntegral (snd (separaMun munx arvM)) :: Float
+
+-- Funções auxiliares
+calcAtraso ::  Data -> Vacinado -> Bool
+calcAtraso  (diaatt,mesatt,anoatt) (cpf, []) = False
+calcAtraso  (diaatt,mesatt,anoatt) (cpf, [(vacx,(diaap,mesap,anoap))])
+    | vacx == "CoronaVac" && (diaatt - diaap) > 21 || vacx == "CoronaVac" && mesatt > mesap && (30 - diaap) + diaatt > 21 || vacx == "CoronaVac" && anoatt > anoap = True
+    | vacx == "Pfizer" && (mesatt - mesap) >= 3 && diaatt >= diaap || vacx == "Astrazeneca" && (mesatt - mesap) >= 3 && diaatt >= diaap = True
+    | otherwise = False
+
+doseAtrasoMun :: Municipio -> CadastroSUS -> Vacinados -> Data -> Quantidade
+doseAtrasoMun munx cs vs datax = length (filter (calcAtraso datax) (filter soPrimeira (filter (checaCPFVac munx cs) vs)))
+                           where soPrimeira (cpf,vacinas) = length vacinas == 1
