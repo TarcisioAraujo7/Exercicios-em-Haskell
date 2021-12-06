@@ -6,3 +6,5 @@ Recursos trabalhados:
 - Casamento de padrões
 - Polimorfismo de tipos   
 - Funções de alta ordem 
+- Tipos Algébricos e a Notação de Registros
+- IO()
